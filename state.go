@@ -1438,6 +1438,18 @@ func NewState(opts ...Options) *LState {
 				opts[0].RegistryGrowStep = RegistryGrowStep
 			}
 		}
+		if opts[0].Fs == nil {
+			opts[0].Fs = afero.NewOsFs()
+		}
+		if opts[0].Stdin == nil {
+			opts[0].Stdin = os.Stdin
+		}
+		if opts[0].Stdout == nil {
+			opts[0].Stdout = os.Stdout
+		}
+		if opts[0].Stderr == nil {
+			opts[0].Stderr = os.Stderr
+		}
 		ls = newLState(opts[0])
 		if !opts[0].SkipOpenLibs {
 			ls.OpenLibs()
