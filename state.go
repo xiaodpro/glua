@@ -109,6 +109,10 @@ type Options struct {
 	// If `MinimizeStackMemory` is set, the call stack will be automatically grown or shrank up to a limit of
 	// `CallStackSize` in order to minimize memory usage. This does incur a slight performance penalty.
 	MinimizeStackMemory bool
+
+	Stdin  io.Reader
+	Stdout io.Writer
+	Stderr io.Writer
 }
 
 /* }}} */
@@ -690,38 +694,38 @@ func newLState(options Options) *LState {
 }
 
 func (ls *LState) printReg() {
-	println("-------------------------")
-	println("thread:", ls)
-	println("top:", ls.reg.Top())
+	fmt.Fprintln(ls.Options.Stdout, "-------------------------")
+	fmt.Fprintln(ls.Options.Stdout, "thread:", ls)
+	fmt.Fprintln(ls.Options.Stdout, "top:", ls.reg.Top())
 	if ls.currentFrame != nil {
-		println("function base:", ls.currentFrame.Base)
-		println("return base:", ls.currentFrame.ReturnBase)
+		fmt.Fprintln(ls.Options.Stdout, "function base:", ls.currentFrame.Base)
+		fmt.Fprintln(ls.Options.Stdout, "return base:", ls.currentFrame.ReturnBase)
 	} else {
-		println("(vm not started)")
+		fmt.Fprintln(ls.Options.Stdout, "(vm not started)")
 	}
-	println("local base:", ls.currentLocalBase())
+	fmt.Fprintln(ls.Options.Stdout, "local base:", ls.currentLocalBase())
 	for i := 0; i < ls.reg.Top(); i++ {
-		println(i, ls.reg.Get(i).String())
+		fmt.Fprintln(ls.Options.Stdout, i, ls.reg.Get(i).String())
 	}
-	println("-------------------------")
+	fmt.Fprintln(ls.Options.Stdout, "-------------------------")
 }
 
 func (ls *LState) printCallStack() {
-	println("-------------------------")
+	fmt.Fprintln(ls.Options.Stdout, "-------------------------")
 	for i := 0; i < ls.stack.Sp(); i++ {
-		print(i)
-		print(" ")
+		fmt.Fprint(ls.Options.Stdout, i)
+		fmt.Fprint(ls.Options.Stdout, " ")
 		frame := ls.stack.At(i)
 		if frame == nil {
 			break
 		}
 		if frame.Fn.IsG {
-			println("IsG:", true, "Frame:", frame, "Fn:", frame.Fn)
+			fmt.Fprintln(ls.Options.Stdout, "IsG:", true, "Frame:", frame, "Fn:", frame.Fn)
 		} else {
-			println("IsG:", false, "Frame:", frame, "Fn:", frame.Fn, "pc:", frame.Pc)
+			fmt.Fprintln(ls.Options.Stdout, "IsG:", false, "Frame:", frame, "Fn:", frame.Fn, "pc:", frame.Pc)
 		}
 	}
-	println("-------------------------")
+	fmt.Fprintln(ls.Options.Stdout, "-------------------------")
 }
 
 func (ls *LState) closeAllUpvalues() { // +inline-start
@@ -1409,6 +1413,10 @@ func NewState(opts ...Options) *LState {
 		ls = newLState(Options{
 			CallStackSize: CallStackSize,
 			RegistrySize:  RegistrySize,
+
+			Stdin:  os.Stdin,
+			Stdout: os.Stdout,
+			Stderr: os.Stderr,
 		})
 		ls.OpenLibs()
 	} else {
@@ -2249,7 +2257,7 @@ func (ls *LState) SetMx(mx int) {
 		for atomic.LoadInt32(&ls.stop) == 0 {
 			runtime.ReadMemStats(&s)
 			if s.Alloc >= limit {
-				fmt.Println("out of memory")
+				fmt.Fprintln(ls.Options.Stderr, "out of memory")
 				os.Exit(3)
 			}
 			time.Sleep(100 * time.Millisecond)

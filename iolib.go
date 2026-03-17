@@ -83,6 +83,20 @@ func newFile(L *LState, file *os.File, path string, flag int, perm os.FileMode, 
 	return ud, nil
 }
 
+func newStdio(L *LState, r io.Reader, w io.Writer) *LUserData {
+	ud := L.NewUserData()
+	lfile := &lFile{}
+	if r != nil {
+		lfile.reader = bufio.NewReaderSize(r, fileDefaultReadBuffer)
+	}
+	if w != nil {
+		lfile.writer = w
+	}
+	ud.Value = lfile
+	L.SetMetatable(ud, L.GetTypeMetatable(lFileClass))
+	return ud
+}
+
 func newProcess(L *LState, cmd string, writable, readable bool) (*LUserData, error) {
 	ud := L.NewUserData()
 	c, args := popenArgs(cmd)
@@ -166,17 +180,6 @@ func fileIsReadable(L *LState, file *lFile) int {
 	return 0
 }
 
-var stdFiles = []struct {
-	name     string
-	file     *os.File
-	writable bool
-	readable bool
-}{
-	{"stdout", os.Stdout, true, false},
-	{"stdin", os.Stdin, false, true},
-	{"stderr", os.Stderr, true, false},
-}
-
 func OpenIo(L *LState) int {
 	mod := L.RegisterModule(IoLibName, map[string]LGFunction{}).(*LTable)
 	mt := L.NewTypeMetatable(lFileClass)
@@ -184,10 +187,10 @@ func OpenIo(L *LState) int {
 	L.SetFuncs(mt, fileMethods)
 	mt.RawSetString("lines", L.NewClosure(fileLines, L.NewFunction(fileLinesIter)))
 
-	for _, finfo := range stdFiles {
-		file, _ := newFile(L, finfo.file, "", 0, os.FileMode(0), finfo.writable, finfo.readable)
-		mod.RawSetString(finfo.name, file)
-	}
+	// stdout, stdin, stderr
+	mod.RawSetString("stdin", newStdio(L, L.Options.Stdin, nil))
+	mod.RawSetString("stdout", newStdio(L, nil, L.Options.Stdout))
+	mod.RawSetString("stderr", newStdio(L, nil, L.Options.Stderr))
 	uv := L.CreateTable(2, 0)
 	uv.RawSetInt(fileDefOutIndex, mod.RawGetString("stdout"))
 	uv.RawSetInt(fileDefInIndex, mod.RawGetString("stdin"))
