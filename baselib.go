@@ -3,10 +3,11 @@ package lua
 import (
 	"fmt"
 	"io"
-	"os"
 	"runtime"
 	"strconv"
 	"strings"
+
+	"github.com/spf13/afero"
 )
 
 /* basic functions {{{ */
@@ -200,17 +201,20 @@ func baseLoadFile(L *LState) int {
 	var chunkname string
 	var err error
 	if L.GetTop() < 1 {
-		reader = os.Stdin
+		// reader = os.Stdin
+		reader = L.Options.Stdin
 		chunkname = "<stdin>"
 	} else {
 		chunkname = L.CheckString(1)
-		reader, err = os.Open(chunkname)
+		// reader, err = os.Open(chunkname)
+		reader, err = L.Options.Fs.Open(chunkname)
 		if err != nil {
 			L.Push(LNil)
 			L.Push(LString(fmt.Sprintf("can not open file: %v", chunkname)))
 			return 2
 		}
-		defer reader.(*os.File).Close()
+		// defer reader.(*os.File).Close()
+		defer reader.(afero.File).Close()
 	}
 	return loadaux(L, reader, chunkname)
 }

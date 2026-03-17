@@ -8,6 +8,8 @@ import (
 	"os"
 	"os/exec"
 	"syscall"
+
+	"github.com/spf13/afero"
 )
 
 var ioFuncs = map[string]LGFunction{
@@ -27,7 +29,8 @@ var ioFuncs = map[string]LGFunction{
 const lFileClass = "FILE*"
 
 type lFile struct {
-	fp     *os.File
+	// fp     *os.File
+	fp     afero.File
 	pp     *exec.Cmd
 	writer io.Writer
 	reader *bufio.Reader
@@ -62,11 +65,12 @@ func errorIfFileIsClosed(L *LState, file *lFile) {
 	}
 }
 
-func newFile(L *LState, file *os.File, path string, flag int, perm os.FileMode, writable, readable bool) (*LUserData, error) {
+// func newFile(L *LState, file *os.File, path string, flag int, perm os.FileMode, writable, readable bool) (*LUserData, error) {
+func newFile(L *LState, file afero.File, path string, flag int, perm os.FileMode, writable, readable bool) (*LUserData, error) {
 	ud := L.NewUserData()
 	var err error
 	if file == nil {
-		file, err = os.OpenFile(path, flag, perm)
+		file, err = L.Options.Fs.OpenFile(path, flag, perm)
 		if err != nil {
 			return nil, err
 		}
@@ -706,7 +710,8 @@ func ioType(L *LState) int {
 }
 
 func ioTmpFile(L *LState) int {
-	file, err := os.CreateTemp("", "")
+	// file, err := os.CreateTemp("", "")
+	file, err := afero.TempFile(L.Options.Fs, "", "")
 	if err != nil {
 		L.Push(LNil)
 		L.Push(LString(err.Error()))

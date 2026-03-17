@@ -3,7 +3,8 @@ package lua
 import (
 	"context"
 	"fmt"
-	"os"
+
+	"github.com/spf13/afero"
 )
 
 type LValueType int
@@ -172,8 +173,9 @@ type Global struct {
 	Global        *LTable
 
 	builtinMts map[int]LValue
-	tempFiles  []*os.File
-	gccount    int32
+	// tempFiles  []*os.File
+	tempFiles []afero.File
+	gccount   int32
 }
 
 type LState struct {

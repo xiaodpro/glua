@@ -4,8 +4,9 @@ import (
 	"bufio"
 	"fmt"
 	"io"
-	"os"
 	"strings"
+
+	"github.com/spf13/afero"
 )
 
 /* checkType {{{ */
@@ -350,12 +351,15 @@ func (ls *LState) CallMeta(obj LValue, event string) LValue {
 /* load and function call operations {{{ */
 
 func (ls *LState) LoadFile(path string) (*LFunction, error) {
-	var file *os.File
+	var file afero.File
+	// var file *os.File
 	var err error
 	if len(path) == 0 {
-		file = os.Stdin
+		// file = os.Stdin
+		file = ls.Options.Stdin
 	} else {
-		file, err = os.Open(path)
+		// file, err = os.Open(path)
+		file, err = ls.Options.Fs.Open(path)
 		defer file.Close()
 		if err != nil {
 			return nil, newApiErrorE(ApiErrorFile, err)

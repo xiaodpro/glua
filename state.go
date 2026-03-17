@@ -16,6 +16,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/spf13/afero"
 	"github.com/xiaodpro/glua/parse"
 )
 
@@ -110,9 +111,10 @@ type Options struct {
 	// `CallStackSize` in order to minimize memory usage. This does incur a slight performance penalty.
 	MinimizeStackMemory bool
 
-	Stdin  io.Reader
-	Stdout io.Writer
-	Stderr io.Writer
+	Fs     afero.Fs
+	Stdin  afero.File
+	Stdout afero.File
+	Stderr afero.File
 }
 
 /* }}} */
@@ -646,7 +648,8 @@ func newGlobal() *Global {
 		Registry:   newLTable(0, 32),
 		Global:     newLTable(0, 64),
 		builtinMts: make(map[int]LValue),
-		tempFiles:  make([]*os.File, 0, 10),
+		// tempFiles:  make([]*os.File, 0, 10),
+		tempFiles: make([]afero.File, 0, 10),
 	}
 }
 
@@ -1414,6 +1417,7 @@ func NewState(opts ...Options) *LState {
 			CallStackSize: CallStackSize,
 			RegistrySize:  RegistrySize,
 
+			Fs:     afero.NewOsFs(),
 			Stdin:  os.Stdin,
 			Stdout: os.Stdout,
 			Stderr: os.Stderr,
@@ -1451,7 +1455,8 @@ func (ls *LState) Close() {
 	for _, file := range ls.G.tempFiles {
 		// ignore errors in these operations
 		file.Close()
-		os.Remove(file.Name())
+		// os.Remove(file.Name())
+		ls.Options.Fs.Remove(file.Name())
 	}
 	ls.stack.FreeAll()
 	ls.stack = nil

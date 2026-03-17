@@ -4,6 +4,8 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"github.com/spf13/afero"
 )
 
 var startedAt time.Time
@@ -99,7 +101,8 @@ func osExecute(L *LState) int {
 
 func osExit(L *LState) int {
 	L.Close()
-	os.Exit(L.OptInt(1, 0))
+	// os.Exit(L.OptInt(1, 0))
+	L.OptInt(1, 0)
 	return 1
 }
 
@@ -150,7 +153,8 @@ func osGetEnv(L *LState) int {
 }
 
 func osRemove(L *LState) int {
-	err := os.Remove(L.CheckString(1))
+	// err := os.Remove(L.CheckString(1))
+	err := L.Options.Fs.Remove(L.CheckString(1))
 	if err != nil {
 		L.Push(LNil)
 		L.Push(LString(err.Error()))
@@ -162,7 +166,8 @@ func osRemove(L *LState) int {
 }
 
 func osRename(L *LState) int {
-	err := os.Rename(L.CheckString(1), L.CheckString(2))
+	// err := os.Rename(L.CheckString(1), L.CheckString(2))
+	err := L.Options.Fs.Rename(L.CheckString(1), L.CheckString(2))
 	if err != nil {
 		L.Push(LNil)
 		L.Push(LString(err.Error()))
@@ -222,12 +227,14 @@ func osTime(L *LState) int {
 }
 
 func osTmpname(L *LState) int {
-	file, err := os.CreateTemp("", "")
+	// file, err := os.CreateTemp("", "")
+	file, err := afero.TempFile(L.Options.Fs, "", "")
 	if err != nil {
 		L.RaiseError("unable to generate a unique filename")
 	}
 	file.Close()
-	os.Remove(file.Name()) // ignore errors
+	// os.Remove(file.Name()) // ignore errors
+	L.Options.Fs.Remove(file.Name()) // ignore errors
 	L.Push(LString(file.Name()))
 	return 1
 }
