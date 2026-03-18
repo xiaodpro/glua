@@ -87,20 +87,6 @@ func newFile(L *LState, file afero.File, path string, flag int, perm os.FileMode
 	return ud, nil
 }
 
-func newStdio(L *LState, r io.Reader, w io.Writer) *LUserData {
-	ud := L.NewUserData()
-	lfile := &lFile{}
-	if r != nil {
-		lfile.reader = bufio.NewReaderSize(r, fileDefaultReadBuffer)
-	}
-	if w != nil {
-		lfile.writer = w
-	}
-	ud.Value = lfile
-	L.SetMetatable(ud, L.GetTypeMetatable(lFileClass))
-	return ud
-}
-
 func newProcess(L *LState, cmd string, writable, readable bool) (*LUserData, error) {
 	ud := L.NewUserData()
 	c, args := popenArgs(cmd)
@@ -192,9 +178,13 @@ func OpenIo(L *LState) int {
 	mt.RawSetString("lines", L.NewClosure(fileLines, L.NewFunction(fileLinesIter)))
 
 	// stdout, stdin, stderr
-	mod.RawSetString("stdin", newStdio(L, L.Options.Stdin, nil))
-	mod.RawSetString("stdout", newStdio(L, nil, L.Options.Stdout))
-	mod.RawSetString("stderr", newStdio(L, nil, L.Options.Stderr))
+	stdin, _ := newFile(L, L.Options.Stdin, "", os.O_RDONLY, os.FileMode(0), false, true)
+	mod.RawSetString("stdin", stdin)
+	stdout, _ := newFile(L, L.Options.Stdout, "", os.O_WRONLY, os.FileMode(0), true, false)
+	mod.RawSetString("stdout", stdout)
+	stderr, _ := newFile(L, L.Options.Stderr, "", os.O_WRONLY, os.FileMode(0), true, false)
+	mod.RawSetString("stderr", stderr)
+
 	uv := L.CreateTable(2, 0)
 	uv.RawSetInt(fileDefOutIndex, mod.RawGetString("stdout"))
 	uv.RawSetInt(fileDefInIndex, mod.RawGetString("stdin"))
